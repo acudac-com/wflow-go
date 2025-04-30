@@ -110,7 +110,7 @@ func VE[T any](wf *Workflow, action string, fn func() (T, error)) *ve[T] {
 	return &ve[T]{step, fn}
 }
 
-func (s *ve[T]) Go() (*T, *Step) { // Returning *T for consistency, caller needs to dereference
+func (s *ve[T]) Go() (*T, *Step) {
 	var v T
 	s.runAsync(func() {
 		result, err := s.fn()
@@ -140,7 +140,7 @@ func P[T any](wf *Workflow, action string, fn func() *T) *p[T] {
 	return &p[T]{step, fn}
 }
 
-func (s *p[T]) Go() (*T, *Step) { // Returning **T to hold the pointer
+func (s *p[T]) Go() (*T, *Step) {
 	var p T
 	s.runAsync(func() {
 		result := s.fn()
@@ -166,7 +166,7 @@ func V[T any](wf *Workflow, action string, fn func() T) *v[T] {
 	return &v[T]{step, fn}
 }
 
-func (s *v[T]) Go() (*T, *Step) { // Returning *T for consistency, caller needs to dereference
+func (s *v[T]) Go() (*T, *Step) {
 	var v T
 	s.runAsync(func() {
 		v = s.fn()
