@@ -85,7 +85,8 @@ func (s *pe[T]) Go() (*T, *Step) {
 	var p T
 	s.runAsync(func() {
 		result, err := s.fn()
-		if s.processError(err) != nil {
+		s.processError(err)
+		if result != nil {
 			p = *result
 		}
 	})
@@ -114,9 +115,8 @@ func (s *ve[T]) Go() (*T, *Step) {
 	var v T
 	s.runAsync(func() {
 		result, err := s.fn()
-		if s.processError(err) != nil {
-			v = result
-		}
+		s.processError(err)
+		v = result
 	})
 	return &v, s.Step
 }
@@ -180,4 +180,241 @@ func (s *v[T]) Do() T {
 		return zero
 	}
 	return s.fn()
+}
+
+// pve: Pointer, Value, Error - function returns (*T, V, error)
+type pve[T any, V any] struct {
+	*Step
+	fn func() (*T, V, error)
+}
+
+func PVE[T any, V any](wf *Workflow, action string, fn func() (*T, V, error)) *pve[T, V] {
+	step := wf.add(action)
+	return &pve[T, V]{step, fn}
+}
+
+func (s *pve[T, V]) Go() (*T, *V, *Step) {
+	var p T
+	var v V
+	s.runAsync(func() {
+		resultPtr, resultVal, err := s.fn()
+		s.processError(err)
+		if resultPtr != nil {
+			p = *resultPtr
+		}
+		v = resultVal
+	})
+	return &p, &v, s.Step
+}
+
+func (s *pve[T, V]) Do() (*T, V, error) {
+	if s.wf.hasErrors() {
+		var zeroV V
+		return nil, zeroV, nil
+	}
+	resultPtr, resultVal, err := s.fn()
+	return resultPtr, resultVal, s.processError(err)
+}
+
+// pv: Pointer, Value - function returns (*T, V)
+type pv[T any, V any] struct {
+	*Step
+	fn func() (*T, V)
+}
+
+func PV[T any, V any](wf *Workflow, action string, fn func() (*T, V)) *pv[T, V] {
+	step := wf.add(action)
+	return &pv[T, V]{step, fn}
+}
+
+func (s *pv[T, V]) Go() (*T, *V, *Step) {
+	var p T
+	var v V
+	s.runAsync(func() {
+		resultPtr, resultVal := s.fn()
+		if resultPtr != nil {
+			p = *resultPtr
+		}
+		v = resultVal
+	})
+	return &p, &v, s.Step
+}
+
+func (s *pv[T, V]) Do() (*T, V) {
+	if s.wf.hasErrors() {
+		var zeroV V
+		return nil, zeroV
+	}
+	resultPtr, resultVal := s.fn()
+	return resultPtr, resultVal
+}
+
+// PE1: Pointer, Error - function takes 1 argument and returns (*T, error)
+type pe1[A any, T any] struct {
+	*Step
+	fn  func(A) (*T, error)
+	arg A
+}
+
+func PE1[A any, T any](wf *Workflow, action string, fn func(A) (*T, error), arg A) *pe1[A, T] {
+	step := wf.add(action)
+	return &pe1[A, T]{step, fn, arg}
+}
+
+func (s *pe1[A, T]) Go() (*T, *Step) {
+	var p T
+	s.runAsync(func() {
+		result, err := s.fn(s.arg)
+		s.processError(err)
+		if result != nil {
+			p = *result
+		}
+	})
+	return &p, s.Step
+}
+
+func (s *pe1[A, T]) Do() (*T, error) {
+	if s.wf.hasErrors() {
+		return nil, nil
+	}
+	result, err := s.fn(s.arg)
+	return result, s.processError(err)
+}
+
+// PE2: Pointer, Error - function takes 2 arguments and returns (*T, error)
+type pe2[A any, B any, T any] struct {
+	*Step
+	fn   func(A, B) (*T, error)
+	arg1 A
+	arg2 B
+}
+
+func PE2[A any, B any, T any](wf *Workflow, action string, fn func(A, B) (*T, error), arg1 A, arg2 B) *pe2[A, B, T] {
+	step := wf.add(action)
+	return &pe2[A, B, T]{step, fn, arg1, arg2}
+}
+
+func (s *pe2[A, B, T]) Go() (*T, *Step) {
+	var p T
+	s.runAsync(func() {
+		result, err := s.fn(s.arg1, s.arg2)
+		s.processError(err)
+		if result != nil {
+			p = *result
+		}
+	})
+	return &p, s.Step
+}
+
+func (s *pe2[A, B, T]) Do() (*T, error) {
+	if s.wf.hasErrors() {
+		return nil, nil
+	}
+	result, err := s.fn(s.arg1, s.arg2)
+	return result, s.processError(err)
+}
+
+// PE3: Pointer, Error - function takes 3 arguments and returns (*T, error)
+type pe3[A any, B any, C any, T any] struct {
+	*Step
+	fn   func(A, B, C) (*T, error)
+	arg1 A
+	arg2 B
+	arg3 C
+}
+
+func PE3[A any, B any, C any, T any](wf *Workflow, action string, fn func(A, B, C) (*T, error), arg1 A, arg2 B, arg3 C) *pe3[A, B, C, T] {
+	step := wf.add(action)
+	return &pe3[A, B, C, T]{step, fn, arg1, arg2, arg3}
+}
+
+func (s *pe3[A, B, C, T]) Go() (*T, *Step) {
+	var p T
+	s.runAsync(func() {
+		result, err := s.fn(s.arg1, s.arg2, s.arg3)
+		s.processError(err)
+		if result != nil {
+			p = *result
+		}
+	})
+	return &p, s.Step
+}
+
+func (s *pe3[A, B, C, T]) Do() (*T, error) {
+	if s.wf.hasErrors() {
+		return nil, nil
+	}
+	result, err := s.fn(s.arg1, s.arg2, s.arg3)
+	return result, s.processError(err)
+}
+
+// PE4: Pointer, Error - function takes 4 arguments and returns (*T, error)
+type pe4[A any, B any, C any, D any, T any] struct {
+	*Step
+	fn   func(A, B, C, D) (*T, error)
+	arg1 A
+	arg2 B
+	arg3 C
+	arg4 D
+}
+
+func PE4[A any, B any, C any, D any, T any](wf *Workflow, action string, fn func(A, B, C, D) (*T, error), arg1 A, arg2 B, arg3 C, arg4 D) *pe4[A, B, C, D, T] {
+	step := wf.add(action)
+	return &pe4[A, B, C, D, T]{step, fn, arg1, arg2, arg3, arg4}
+}
+
+func (s *pe4[A, B, C, D, T]) Go() (*T, *Step) {
+	var p T
+	s.runAsync(func() {
+		result, err := s.fn(s.arg1, s.arg2, s.arg3, s.arg4)
+		s.processError(err)
+		if result != nil {
+			p = *result
+		}
+	})
+	return &p, s.Step
+}
+
+func (s *pe4[A, B, C, D, T]) Do() (*T, error) {
+	if s.wf.hasErrors() {
+		return nil, nil
+	}
+	result, err := s.fn(s.arg1, s.arg2, s.arg3, s.arg4)
+	return result, s.processError(err)
+}
+
+// PE5: Pointer, Error - function takes 5 arguments and returns (*T, error)
+type pe5[A any, B any, C any, D any, E any, T any] struct {
+	*Step
+	fn   func(A, B, C, D, E) (*T, error)
+	arg1 A
+	arg2 B
+	arg3 C
+	arg4 D
+	arg5 E
+}
+
+func PE5[A any, B any, C any, D any, E any, T any](wf *Workflow, action string, fn func(A, B, C, D, E) (*T, error), arg1 A, arg2 B, arg3 C, arg4 D, arg5 E) *pe5[A, B, C, D, E, T] {
+	step := wf.add(action)
+	return &pe5[A, B, C, D, E, T]{step, fn, arg1, arg2, arg3, arg4, arg5}
+}
+
+func (s *pe5[A, B, C, D, E, T]) Go() (*T, *Step) {
+	var p T
+	s.runAsync(func() {
+		result, err := s.fn(s.arg1, s.arg2, s.arg3, s.arg4, s.arg5)
+		s.processError(err)
+		if result != nil {
+			p = *result
+		}
+	})
+	return &p, s.Step
+}
+
+func (s *pe5[A, B, C, D, E, T]) Do() (*T, error) {
+	if s.wf.hasErrors() {
+		return nil, nil
+	}
+	result, err := s.fn(s.arg1, s.arg2, s.arg3, s.arg4, s.arg5)
+	return result, s.processError(err)
 }
