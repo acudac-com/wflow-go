@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-const hasErrorsKey string = "hasErrors"
+const firstErrorKey string = "hasErrors"
 
 type Workflow struct {
 	state *sync.Map
@@ -16,14 +16,14 @@ func New() *Workflow {
 	return &Workflow{&sync.Map{}, &sync.Map{}}
 }
 
-func (wf *Workflow) add(action string) *step {
-	step := &step{wf, action, nil, nil, nil}
+func (wf *Workflow) add(action string, waitFor ...*step) *step {
+	step := &step{wf, action, nil, nil, waitFor}
 	wf.steps.Store(step, true)
 	return step
 }
 
 func (wf *Workflow) hasErrors() bool {
-	_, ok := wf.state.Load(hasErrorsKey)
+	_, ok := wf.state.Load(firstErrorKey)
 	return ok
 }
 
@@ -35,19 +35,17 @@ func (wf *Workflow) Wait() {
 	})
 }
 
-// Will wait for all steps to finish and return first error
+// Will return an error if any step already failed and will not wait for remaining steps to finish.
+// Will only wait for all steps if no error already found.
 func (wf *Workflow) FirstError() error {
-	var err error
-	wf.steps.Range(func(key, value any) bool {
-		step := key.(*step)
-		step.wait()
-		if step.err != nil {
-			err = step.err
-			return false
-		}
-		return true
-	})
-	return err
+	if err, ok := wf.state.Load(firstErrorKey); ok {
+		return err.(error)
+	}
+	wf.Wait()
+	if err, ok := wf.state.Load(firstErrorKey); ok {
+		return err.(error)
+	}
+	return nil
 }
 
 // Will wait for all steps to finish and return a new combined error of all the errors
@@ -69,27 +67,27 @@ func (wf *Workflow) AllErrors() error {
 }
 
 type step struct {
-	wf     *Workflow
-	action string
-	wg     *sync.WaitGroup
-	err    error
-	after  []*step
+	wf      *Workflow
+	action  string
+	wg      *sync.WaitGroup
+	err     error
+	waitFor []*step
 }
 
-// Returns true if err==nil and stores the error in the step otherwise.
-// Also marks the workflow as failed if err != nil, so that other unstarted steps do not start.
+// If the error is not nil, it is saved on the step and the workflow is marked as failed.
+// Also prepends the action in the error description.
 func (s *step) processError(err error) error {
 	if err == nil {
 		return nil
 	}
 	s.err = fmt.Errorf("%s: %w", s.action, err)
-	s.wf.state.LoadOrStore(hasErrorsKey, true)
+	s.wf.state.LoadOrStore(firstErrorKey, s.err)
 	return s.err
 }
 
 // Returns whether the step should run, but first waits for dependancies to finish.
 func (s *step) shouldRun() bool {
-	for _, step := range s.after {
+	for _, step := range s.waitFor {
 		step.wait()
 	}
 	return !s.wf.hasErrors()
@@ -112,11 +110,6 @@ func (s *step) wait() {
 	if s.wg != nil {
 		s.wg.Wait()
 	}
-}
-
-// Marks the steps this step should wait for before running. Returns immediately
-func (s *step) After(steps ...*step) {
-	s.after = steps
 }
 
 func zero[T any]() T {
