@@ -13,11 +13,11 @@ type Workflow struct {
 }
 
 func New() *Workflow {
-	return &Workflow{}
+	return &Workflow{&sync.Map{}, &sync.Map{}}
 }
 
-func (wf *Workflow) add(action string) *Step {
-	step := &Step{wf, action, nil, nil, nil}
+func (wf *Workflow) add(action string) *step {
+	step := &step{wf, action, nil, nil, nil}
 	wf.steps.Store(step, true)
 	return step
 }
@@ -29,7 +29,7 @@ func (wf *Workflow) hasErrors() bool {
 
 func (wf *Workflow) Wait() {
 	wf.steps.Range(func(key, value any) bool {
-		step := key.(*Step)
+		step := key.(*step)
 		step.wait()
 		return true
 	})
@@ -39,7 +39,7 @@ func (wf *Workflow) Wait() {
 func (wf *Workflow) FirstError() error {
 	var err error
 	wf.steps.Range(func(key, value any) bool {
-		step := key.(*Step)
+		step := key.(*step)
 		step.wait()
 		if step.err != nil {
 			err = step.err
@@ -54,7 +54,7 @@ func (wf *Workflow) FirstError() error {
 func (wf *Workflow) AllErrors() error {
 	var err error
 	wf.steps.Range(func(key, value any) bool {
-		step := key.(*Step)
+		step := key.(*step)
 		step.wait()
 		if step.err != nil {
 			if err == nil {
@@ -68,17 +68,17 @@ func (wf *Workflow) AllErrors() error {
 	return err
 }
 
-type Step struct {
+type step struct {
 	wf     *Workflow
 	action string
 	wg     *sync.WaitGroup
 	err    error
-	after  []*Step
+	after  []*step
 }
 
 // Returns true if err==nil and stores the error in the step otherwise.
 // Also marks the workflow as failed if err != nil, so that other unstarted steps do not start.
-func (s *Step) processError(err error) error {
+func (s *step) processError(err error) error {
 	if err == nil {
 		return nil
 	}
@@ -88,14 +88,14 @@ func (s *Step) processError(err error) error {
 }
 
 // Returns whether the step should run, but first waits for dependancies to finish.
-func (s *Step) shouldRun() bool {
+func (s *step) shouldRun() bool {
 	for _, step := range s.after {
 		step.wait()
 	}
 	return !s.wf.hasErrors()
 }
 
-func (s *Step) runAsync(f func()) {
+func (s *step) runAsync(f func()) {
 	if s.shouldRun() {
 		if s.wg == nil {
 			s.wg = &sync.WaitGroup{}
@@ -108,14 +108,14 @@ func (s *Step) runAsync(f func()) {
 	}
 }
 
-func (s *Step) wait() {
+func (s *step) wait() {
 	if s.wg != nil {
 		s.wg.Wait()
 	}
 }
 
 // Marks the steps this step should wait for before running. Returns immediately
-func (s *Step) After(steps ...*Step) {
+func (s *step) After(steps ...*step) {
 	s.after = steps
 }
 

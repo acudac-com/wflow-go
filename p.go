@@ -3,7 +3,7 @@ package wflow
 // INIT
 // p
 type p[P any] struct {
-	*Step
+	*step
 	fn func() *P
 }
 
@@ -13,7 +13,7 @@ func P[P any](wf *Workflow, action string, fn func() *P) *p[P] {
 }
 
 type pe[T any] struct {
-	*Step
+	*step
 	fn func() (*T, error)
 }
 
@@ -24,7 +24,7 @@ func PE[T any](wf *Workflow, action string, fn func() (*T, error)) *pe[T] {
 
 // p1
 type p1[P any, A1 any] struct {
-	*Step
+	*step
 	fn func(A1) *P
 }
 
@@ -34,7 +34,7 @@ func P1[P any, A1 any](wf *Workflow, action string, fn func(A1) *P) *p1[P, A1] {
 }
 
 type pe1[P any, A1 any] struct {
-	*Step
+	*step
 	fn func(A1) (*P, error)
 }
 
@@ -45,7 +45,7 @@ func PE1[P any, A1 any](wf *Workflow, action string, fn func(A1) (*P, error)) *p
 
 // p2
 type p2[P any, A1 any, A2 any] struct {
-	*Step
+	*step
 	fn func(A1, A2) *P
 }
 
@@ -55,7 +55,7 @@ func P2[P any, A1 any, A2 any](wf *Workflow, action string, fn func(A1, A2) *P) 
 }
 
 type pe2[P any, A1 any, A2 any] struct {
-	*Step
+	*step
 	fn func(A1, A2) (*P, error)
 }
 
@@ -66,7 +66,7 @@ func PE2[P any, A1 any, A2 any](wf *Workflow, action string, fn func(A1, A2) (*P
 
 // GO
 // p
-func (s *p[P]) Go() (*P, *Step) {
+func (s *p[P]) Go() (*P, *step) {
 	var p P
 	s.runAsync(func() {
 		result := s.fn()
@@ -75,10 +75,10 @@ func (s *p[P]) Go() (*P, *Step) {
 			p = *result
 		}
 	})
-	return &p, s.Step
+	return &p, s.step
 }
 
-func (s *pe[P]) Go() (*P, *Step) {
+func (s *pe[P]) Go() (*P, *step) {
 	var p P
 	s.runAsync(func() {
 		result, err := s.fn()
@@ -87,11 +87,11 @@ func (s *pe[P]) Go() (*P, *Step) {
 			p = *result
 		}
 	})
-	return &p, s.Step
+	return &p, s.step
 }
 
 // p1
-func (s *p1[P, A1]) Go(a1 A1) (*P, *Step) {
+func (s *p1[P, A1]) Go(a1 A1) (*P, *step) {
 	var p P
 	s.runAsync(func() {
 		result := s.fn(a1)
@@ -100,10 +100,10 @@ func (s *p1[P, A1]) Go(a1 A1) (*P, *Step) {
 			p = *result
 		}
 	})
-	return &p, s.Step
+	return &p, s.step
 }
 
-func (s *pe1[P, A1]) Go(a1 A1) (*P, *Step) {
+func (s *pe1[P, A1]) Go(a1 A1) (*P, *step) {
 	var p P
 	s.runAsync(func() {
 		result, err := s.fn(a1)
@@ -112,11 +112,11 @@ func (s *pe1[P, A1]) Go(a1 A1) (*P, *Step) {
 			p = *result
 		}
 	})
-	return &p, s.Step
+	return &p, s.step
 }
 
 // p2
-func (s *p2[P, A1, A2]) Go(a1 A1, a2 A2) (*P, *Step) {
+func (s *p2[P, A1, A2]) Go(a1 A1, a2 A2) (*P, *step) {
 	var p P
 	s.runAsync(func() {
 		result := s.fn(a1, a2)
@@ -125,10 +125,10 @@ func (s *p2[P, A1, A2]) Go(a1 A1, a2 A2) (*P, *Step) {
 			p = *result
 		}
 	})
-	return &p, s.Step
+	return &p, s.step
 }
 
-func (s *pe2[P, A1, A2]) Go(a1 A1, a2 A2) (*P, *Step) {
+func (s *pe2[P, A1, A2]) Go(a1 A1, a2 A2) (*P, *step) {
 	var p P
 	s.runAsync(func() {
 		result, err := s.fn(a1, a2)
@@ -137,7 +137,7 @@ func (s *pe2[P, A1, A2]) Go(a1 A1, a2 A2) (*P, *Step) {
 			p = *result
 		}
 	})
-	return &p, s.Step
+	return &p, s.step
 }
 
 // DO
